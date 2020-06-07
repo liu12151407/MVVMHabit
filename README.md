@@ -1,31 +1,21 @@
-## 更新日志
-**v3.0.0：2018年10月8日**
+## 最新日志
+**v3.0.7：2019年1月25日**
 
-- 全面升级AAC，引入谷歌lifecycle组件；
-- 修改Base基类，满足新一套模式；
+- 优化框架代码，解决已知Bug；
+- 新增ViewPager+Fragment例子；
+- 新增RecycleView多布局例子；
 - 升级第三方依赖库；
-- 修改例子程序；
 - 修改文档说明。
+#### [更多日志](./UpdateLog.md)
+
+#### [AndroidX分支](https://github.com/goldze/MVVMHabit/tree/androidx)
 ***
-**v2.0.6：2018年7月19日**
 
-- 优化框架性能、基类逻辑，新增绑定命令；
-- 补充例子程序及注释；
-- 升级/修改第三方依赖库；
-- 补充文档说明。
-***
-**v2.0.0：2018年4月10日**
-
-- 全面升级RxJava2；
-- 优化绑定回调方式；
-- 升级第三方依赖库；
-- 微调例子程序。
-
-**注：[1.x-废弃版（最后版本：1.2.6.1）](https://github.com/goldze/MVVMHabit/tree/1.2.6.1)、[2.x-顺手版（最后版本：2.0.10）](https://github.com/goldze/MVVMHabit/tree/2.0.10)已停止维护，建议使用当前[3.x-健壮版（最后版本：3.0.6）](https://github.com/goldze/MVVMHabit)。**
+**注：[1.x-废弃版（最后版本：1.2.6.1）](https://github.com/goldze/MVVMHabit/tree/1.2.6.1)、[2.x-顺手版（最后版本：2.0.10）](https://github.com/goldze/MVVMHabit/tree/2.0.10)已停止维护，建议使用当前[3.x-健壮版（最后版本：3.1.6）](https://github.com/goldze/MVVMHabit)。**
 
 > **原文地址：** [https://github.com/goldze/MVVMHabit](https://github.com/goldze/MVVMHabit)
 
-<a target="_blank" href="//shang.qq.com/wpa/qunwpa?idkey=a8db5d8f95bc432606fd79c3d6e494e8a97401671c27de4a8fe975382a441a3e"><img border="0" src="http://pub.idqqimg.com/wpa/images/group.png" alt="MVVMHabit-Family" title="MVVMHabit-Family"></a>
+<a target="_blank" href="http://qm.qq.com/cgi-bin/qm/qr?k=Pvi-65bZN6fRly3VBC8F3fS7A-Pjinna"><img border="0" src="http://pub.idqqimg.com/wpa/images/group.png" alt="MVVMHabit-Family" title="MVVMHabit-Family"></a>
 # MVVMHabit
 ##
 目前，android流行的MVC、MVP模式的开发框架很多，然而一款基于MVVM模式开发框架却很少。**MVVMHabit是以谷歌DataBinding+LiveData+ViewModel框架为基础，整合Okhttp+RxJava+Retrofit+Glide等流行模块，加上各种原生控件自定义的BindingAdapter，让事件与数据源完美绑定的一款容易上瘾的实用性MVVM快速开发框架**。从此告别findViewById()，告别setText()，告别setOnClickListener()...
@@ -56,12 +46,13 @@
 
 - **全局操作**
 	1. 全局的Activity堆栈式管理，在程序任何地方可以打开、结束指定的Activity，一键退出应用程序。
-	2. LoggingInterceptor全局拦截网络请求，打印Request和Response，格式化json、xml数据显示，方便与后台调试接口。
+	2. LoggingInterceptor全局拦截网络请求日志，打印Request和Response，格式化json、xml数据显示，方便与后台调试接口。
 	3. 全局Cookie，支持SharedPreferences和内存两种管理模式。
 	4. 通用的网络请求异常监听，根据不同的状态码或异常设置相应的message。
 	5. 全局的异常捕获，程序发生异常时不会崩溃，可跳入异常界面重启应用。
 	6. 全局事件回调，提供RxBus、Messenger两种回调方式。
-	7. 全局任意位置一行代码实现文件下载。
+	7. 全局任意位置一行代码实现文件下载进度监听（暂不支持多文件进度监听）。
+    8. 全局点击事件防抖动处理，防止点击过快。
 
 
 ## 1、准备工作
@@ -91,7 +82,7 @@ allprojects {
 ```gradle
 dependencies {
     ...
-    implementation 'com.github.goldze:MVVMHabit:3.0.6'
+    implementation 'com.github.goldze:MVVMHabit:3.1.6'
 }
 ```
 或
@@ -584,10 +575,10 @@ Messenger.getDefault().register(this, LoginViewModel.TOKEN_LOGINVIEWMODEL_REFRES
 //参数2：定义的token
 //参数3：实体的泛型约束
 //参数4：执行的回调监听
-Messenger.getDefault().register(this, LoginViewModel.TOKEN_LOGINVIEWMODEL_REFRESH, String.class, new Consumer<String>() {
+Messenger.getDefault().register(this, LoginViewModel.TOKEN_LOGINVIEWMODEL_REFRESH, String.class, new BindingConsumer<String>() {
     @Override
-    public void accept(String s) throws Exception {
-                
+    public void call(String s) {
+         
     }
 });
 ```
@@ -778,12 +769,33 @@ ImageUtils.compressWithRx(filePaths, new Subscriber() {
 解决方法：其实确保自己的写法没有问题，是可以直接运行的，报红不一定是你写的有问题，也有可能是编译器抽风了。或者使用下面的办法</br>
 第一招：Build->Clean Project；</br>第二招：Build->Rebuild Project；</br>第三招：重启大法。
 
+##### 4.1.5、gradle错误
+如果遇到以下编译问题：
+
+错误: 无法将类 BindingRecyclerViewAdapters中的方法 setAdapter应用到给定类型;
+需要: RecyclerView,ItemBinding,List,BindingRecyclerViewAdapter,ItemIds<? super T>,ViewHolderFactory
+找到: RecyclerView,ItemBinding,ObservableList,BindingRecyclerViewAdapter<CAP#1>,ItemIds,ViewHolderFactory
+原因: 推断类型不符合等式约束条件
+推断: CAP#1
+等式约束条件: CAP#1,NetWorkItemViewModel
+其中, T是类型变量:
+T扩展已在方法 setAdapter(RecyclerView,ItemBinding,List,BindingRecyclerViewAdapter,ItemIds<? super T>,ViewHolderFactory)中声明的Object
+其中, CAP#1是新类型变量:
+CAP#1从?的捕获扩展Object
+
+一般是由于gradle plugin版本3.5.1造成的，请换成gradle plugin 3.5.0以下版本
+
 ## 混淆
 例子程序中给出了最新的【MVVMHabit混淆规则】，包含MVVMHabit中依赖的所有第三方library，可以将规则直接拷贝到自己app的混淆规则中。在此基础上你只需要关注自己业务代码以及自己引入第三方的混淆，【MVVMHabit混淆规则】请参考app目录下的[proguard-rules.pro](./app/proguard-rules.pro)文件。
+
+## 组件化
+进阶Android组件化方案，请移步：[MVVMHabitComponent](https://github.com/goldze/MVVMHabitComponent)
+
 ## About
 **goldze：** 本人喜欢尝试新的技术，以后发现有好用的东西，我将会在企业项目中实战，没有问题了就会把它引入到**MVVMHabit**中，一直维护着这套框架，谢谢各位朋友的支持。如果觉得这套框架不错的话，麻烦点个 **star**，你的支持则是我前进的动力！
 
 **QQ群**：84692105
+
 ## License
 
     Copyright 2017 goldze(曾宪泽)

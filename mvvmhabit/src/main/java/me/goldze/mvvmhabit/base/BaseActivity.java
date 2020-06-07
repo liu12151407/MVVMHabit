@@ -27,10 +27,10 @@ import me.goldze.mvvmhabit.utils.MaterialDialogUtils;
  * 一个拥有DataBinding框架的基Activity
  * 这里根据项目业务可以换成你自己熟悉的BaseActivity, 但是需要继承RxAppCompatActivity,方便LifecycleProvider管理生命周期
  */
-public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseViewModel> extends RxAppCompatActivity implements IBaseActivity {
+public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseViewModel> extends RxAppCompatActivity implements IBaseView {
     protected V binding;
     protected VM viewModel;
-    protected int viewModelId;
+    private int viewModelId;
     private MaterialDialog dialog;
 
     @Override
@@ -55,11 +55,12 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
         super.onDestroy();
         //解除Messenger注册
         Messenger.getDefault().unregister(viewModel);
-        //解除ViewModel生命周期感应
-        getLifecycle().removeObserver(viewModel);
-        viewModel.removeRxBus();
-        viewModel = null;
-        binding.unbind();
+        if (viewModel != null) {
+            viewModel.removeRxBus();
+        }
+        if(binding != null){
+            binding.unbind();
+        }
     }
 
     /**
@@ -81,7 +82,10 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
             }
             viewModel = (VM) createViewModel(this, modelClass);
         }
+        //关联ViewModel
         binding.setVariable(viewModelId, viewModel);
+        //支持LiveData绑定xml，数据改变，UI自动会更新
+        binding.setLifecycleOwner(this);
         //让ViewModel拥有View的生命周期感应
         getLifecycle().addObserver(viewModel);
         //注入RxLifecycle生命周期
@@ -100,7 +104,7 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
      * =====================================================================
      **/
     //注册ViewModel与View的契约UI回调事件
-    private void registorUIChangeLiveDataCallBack() {
+    protected void registorUIChangeLiveDataCallBack() {
         //加载对话框显示
         viewModel.getUC().getShowDialogEvent().observe(this, new Observer<String>() {
             @Override
@@ -109,9 +113,9 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
             }
         });
         //加载对话框消失
-        viewModel.getUC().getDismissDialogEvent().observe(this, new Observer<Boolean>() {
+        viewModel.getUC().getDismissDialogEvent().observe(this, new Observer<Void>() {
             @Override
-            public void onChanged(@Nullable Boolean aBoolean) {
+            public void onChanged(@Nullable Void v) {
                 dismissDialog();
             }
         });
@@ -134,16 +138,16 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
             }
         });
         //关闭界面
-        viewModel.getUC().getFinishEvent().observe(this, new Observer<Boolean>() {
+        viewModel.getUC().getFinishEvent().observe(this, new Observer<Void>() {
             @Override
-            public void onChanged(@Nullable Boolean aBoolean) {
+            public void onChanged(@Nullable Void v) {
                 finish();
             }
         });
         //关闭上一层
-        viewModel.getUC().getOnBackPressedEvent().observe(this, new Observer<Boolean>() {
+        viewModel.getUC().getOnBackPressedEvent().observe(this, new Observer<Void>() {
             @Override
-            public void onChanged(@Nullable Boolean aBoolean) {
+            public void onChanged(@Nullable Void v) {
                 onBackPressed();
             }
         });
@@ -151,6 +155,7 @@ public abstract class BaseActivity<V extends ViewDataBinding, VM extends BaseVie
 
     public void showDialog(String title) {
         if (dialog != null) {
+            dialog = dialog.getBuilder().title(title).build();
             dialog.show();
         } else {
             MaterialDialog.Builder builder = MaterialDialogUtils.showIndeterminateProgressDialog(this, title, true);

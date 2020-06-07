@@ -1,7 +1,6 @@
 package com.goldze.mvvmhabit.ui.form;
 
 import android.app.Application;
-import android.arch.lifecycle.MutableLiveData;
 import android.databinding.ObservableBoolean;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
@@ -9,28 +8,28 @@ import android.view.View;
 
 import com.goldze.mvvmhabit.entity.FormEntity;
 import com.goldze.mvvmhabit.entity.SpinnerItemData;
-import com.goldze.mvvmhabit.ui.base.TitleViewModel;
+import com.goldze.mvvmhabit.ui.base.viewmodel.ToolbarViewModel;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import me.goldze.mvvmhabit.base.BaseViewModel;
 import me.goldze.mvvmhabit.binding.command.BindingAction;
 import me.goldze.mvvmhabit.binding.command.BindingCommand;
 import me.goldze.mvvmhabit.binding.command.BindingConsumer;
 import me.goldze.mvvmhabit.binding.viewadapter.spinner.IKeyAndValue;
+import me.goldze.mvvmhabit.bus.event.SingleLiveEvent;
 import me.goldze.mvvmhabit.utils.ToastUtils;
 
 /**
  * Created by goldze on 2017/7/17.
  */
 
-public class FormViewModel extends BaseViewModel {
+public class FormViewModel extends ToolbarViewModel {
     public FormEntity entity;
 
     public List<IKeyAndValue> sexItemDatas;
-    public MutableLiveData<String> entityJsonLiveData = new MutableLiveData<>();
+    public SingleLiveEvent<String> entityJsonLiveData = new SingleLiveEvent<>();
     //封装一个界面发生改变的观察者
     public UIChangeObservable uc;
 
@@ -42,9 +41,6 @@ public class FormViewModel extends BaseViewModel {
             showDateDialogObservable = new ObservableBoolean(false);
         }
     }
-
-    //include绑定一个通用的TitleViewModel
-    public TitleViewModel titleViewModel;
 
     public FormViewModel(@NonNull Application application) {
         super(application);
@@ -60,29 +56,30 @@ public class FormViewModel extends BaseViewModel {
         sexItemDatas.add(new SpinnerItemData("女", "2"));
     }
 
-    public void setTitleViewModel(TitleViewModel titleViewModel) {
-        this.titleViewModel = titleViewModel;
+    /**
+     * 初始化Toolbar
+     */
+    public void initToolbar() {
         //初始化标题栏
-        titleViewModel.rightTextVisibility.set(View.VISIBLE);
-        titleViewModel.rightText.set("更多");
+        setRightTextVisible(View.VISIBLE);
         if (TextUtils.isEmpty(entity.getId())) {
             //ID为空是新增
-            titleViewModel.titleText.set("表单提交");
+            setTitleText("表单提交");
         } else {
             //ID不为空是修改
-            titleViewModel.titleText.set("表单编辑");
+            setTitleText("表单编辑");
         }
-        //右边文字的点击事件
-        titleViewModel.rightTextOnClickCommand = new BindingCommand(new BindingAction() {
-            @Override
-            public void call() {
-                ToastUtils.showShort("更多");
-            }
-        });
+    }
+
+    @Override
+    public void rightTextOnClick() {
+        ToastUtils.showShort("更多");
     }
 
     public void setFormEntity(FormEntity entity) {
-        this.entity = entity;
+        if (this.entity == null) {
+            this.entity = entity;
+        }
     }
 
     //性别选择的监听
@@ -126,9 +123,5 @@ public class FormViewModel extends BaseViewModel {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        entity = null;
-        uc = null;
-        sexItemDatas.clear();
-        sexItemDatas = null;
     }
 }

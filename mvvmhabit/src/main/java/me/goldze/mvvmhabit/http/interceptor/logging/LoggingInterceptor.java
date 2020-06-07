@@ -74,7 +74,7 @@ public class LoggingInterceptor implements Interceptor {
         long st = System.nanoTime();
         Response response = chain.proceed(request);
 
-        List<String> segmentList = ((Request) request.tag()).url().encodedPathSegments();
+        List<String> segmentList = request.url().encodedPathSegments();
         long chainMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - st);
         String header = response.headers().toString();
         int code = response.code();
@@ -93,8 +93,9 @@ public class LoggingInterceptor implements Interceptor {
                 || subtype.contains("xml")
                 || subtype.contains("plain")
                 || subtype.contains("html"))) {
-            String bodyString = Printer.getJsonString(responseBody.string());
-            Printer.printJsonResponse(builder, chainMs, isSuccessful, code, header, bodyString, segmentList);
+            String bodyString = responseBody.string();
+            String bodyJson = Printer.getJsonString(bodyString);
+            Printer.printJsonResponse(builder, chainMs, isSuccessful, code, header, bodyJson, segmentList);
             body = ResponseBody.create(contentType, bodyString);
         } else {
             Printer.printFileResponse(builder, chainMs, isSuccessful, code, header, segmentList);

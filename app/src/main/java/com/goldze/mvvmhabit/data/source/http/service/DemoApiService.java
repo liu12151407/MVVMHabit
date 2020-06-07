@@ -1,4 +1,4 @@
-package com.goldze.mvvmhabit.service;
+package com.goldze.mvvmhabit.data.source.http.service;
 
 import com.goldze.mvvmhabit.entity.DemoEntity;
 
@@ -10,7 +10,7 @@ import retrofit2.http.GET;
 import retrofit2.http.POST;
 
 /**
- * Created by 曾宪泽 on 2017/6/15.
+ * Created by goldze on 2017/6/15.
  */
 
 public interface DemoApiService {

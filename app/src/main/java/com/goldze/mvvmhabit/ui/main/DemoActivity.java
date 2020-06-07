@@ -3,6 +3,8 @@ package com.goldze.mvvmhabit.ui.main;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.arch.lifecycle.Observer;
+import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.databinding.Observable;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -16,6 +18,7 @@ import io.reactivex.functions.Consumer;
 import me.goldze.mvvmhabit.base.BaseActivity;
 import me.goldze.mvvmhabit.http.DownLoadManager;
 import me.goldze.mvvmhabit.http.download.ProgressCallBack;
+import me.goldze.mvvmhabit.utils.KLog;
 import me.goldze.mvvmhabit.utils.ToastUtils;
 import okhttp3.ResponseBody;
 
@@ -24,6 +27,11 @@ import okhttp3.ResponseBody;
  */
 
 public class DemoActivity extends BaseActivity<ActivityDemoBinding, DemoViewModel> {
+    @Override
+    public void initParam() {
+        super.initParam();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
 
     @Override
     public int initContentView(Bundle savedInstanceState) {
@@ -38,14 +46,14 @@ public class DemoActivity extends BaseActivity<ActivityDemoBinding, DemoViewMode
     @Override
     public void initViewObservable() {
         //注册监听相机权限的请求
-        viewModel.requestCameraPermissions.addOnPropertyChangedCallback(new Observable.OnPropertyChangedCallback() {
+        viewModel.requestCameraPermissions.observe(this, new Observer<Boolean>() {
             @Override
-            public void onPropertyChanged(Observable observable, int i) {
+            public void onChanged(@Nullable Boolean aBoolean) {
                 requestCameraPermissions();
             }
         });
         //注册文件下载的监听
-        viewModel.loadUrl.observe(this, new Observer<String>() {
+        viewModel.loadUrlEvent.observe(this, new Observer<String>() {
             @Override
             public void onChanged(@Nullable String url) {
                 downFile(url);

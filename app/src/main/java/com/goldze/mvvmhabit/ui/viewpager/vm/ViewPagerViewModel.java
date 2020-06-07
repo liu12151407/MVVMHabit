@@ -12,6 +12,7 @@ import com.goldze.mvvmhabit.ui.viewpager.adapter.ViewPagerBindingAdapter;
 import me.goldze.mvvmhabit.base.BaseViewModel;
 import me.goldze.mvvmhabit.binding.command.BindingCommand;
 import me.goldze.mvvmhabit.binding.command.BindingConsumer;
+import me.goldze.mvvmhabit.bus.event.SingleLiveEvent;
 import me.goldze.mvvmhabit.utils.ToastUtils;
 import me.tatarka.bindingcollectionadapter2.BindingViewPagerAdapter;
 import me.tatarka.bindingcollectionadapter2.ItemBinding;
@@ -22,13 +23,9 @@ import me.tatarka.bindingcollectionadapter2.ItemBinding;
  */
 
 public class ViewPagerViewModel extends BaseViewModel {
-
+    public SingleLiveEvent<String> itemClickEvent = new SingleLiveEvent<>();
     public ViewPagerViewModel(@NonNull Application application) {
         super(application);
-    }
-
-    public void addPage() {
-        items.clear();
         //模拟3个ViewPager页面
         for (int i = 1; i <= 3; i++) {
             ViewPagerItemViewModel itemViewModel = new ViewPagerItemViewModel(this, "第" + i + "个页面");
@@ -47,8 +44,6 @@ public class ViewPagerViewModel extends BaseViewModel {
             return "条目" + position;
         }
     };
-    //给ViewPager添加Adpter，使用自定义的Adapter继承BindingViewPagerAdapter，重写onBindBinding方法
-    public final ViewPagerBindingAdapter adapter = new ViewPagerBindingAdapter();
     //ViewPager切换监听
     public BindingCommand<Integer> onPageSelectedCommand = new BindingCommand<>(new BindingConsumer<Integer>() {
         @Override

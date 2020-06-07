@@ -4,29 +4,47 @@ import android.app.Application;
 import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.Lifecycle;
 import android.arch.lifecycle.LifecycleOwner;
-import android.arch.lifecycle.LiveData;
-import android.arch.lifecycle.MutableLiveData;
 import android.arch.lifecycle.Observer;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
 import com.trello.rxlifecycle2.LifecycleProvider;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
 import me.goldze.mvvmhabit.bus.event.SingleLiveEvent;
 
 /**
  * Created by goldze on 2017/6/15.
  */
-public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
+public class BaseViewModel<M extends BaseModel> extends AndroidViewModel implements IBaseViewModel, Consumer<Disposable> {
+    protected M model;
     private UIChangeLiveData uc;
-    private LifecycleProvider lifecycle;
+    //弱引用持有
+    private WeakReference<LifecycleProvider> lifecycle;
+    //管理RxJava，主要针对RxJava异步操作造成的内存泄漏
+    private CompositeDisposable mCompositeDisposable;
 
     public BaseViewModel(@NonNull Application application) {
+        this(application, null);
+    }
+
+    public BaseViewModel(@NonNull Application application, M model) {
         super(application);
+        this.model = model;
+        mCompositeDisposable = new CompositeDisposable();
+    }
+
+    protected void addSubscribe(Disposable disposable) {
+        if (mCompositeDisposable == null) {
+            mCompositeDisposable = new CompositeDisposable();
+        }
+        mCompositeDisposable.add(disposable);
     }
 
     /**
@@ -35,11 +53,11 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
      * @param lifecycle
      */
     public void injectLifecycleProvider(LifecycleProvider lifecycle) {
-        this.lifecycle = lifecycle;
+        this.lifecycle = new WeakReference<>(lifecycle);
     }
 
     public LifecycleProvider getLifecycleProvider() {
-        return lifecycle;
+        return lifecycle.get();
     }
 
     public UIChangeLiveData getUC() {
@@ -77,7 +95,7 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
      * @param bundle 跳转所携带的信息
      */
     public void startActivity(Class<?> clz, Bundle bundle) {
-        Map<String, Object> params = new HashMap();
+        Map<String, Object> params = new HashMap<>();
         params.put(ParameterField.CLASS, clz);
         if (bundle != null) {
             params.put(ParameterField.BUNDLE, bundle);
@@ -101,7 +119,7 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
      * @param bundle        跳转所携带的信息
      */
     public void startContainerActivity(String canonicalName, Bundle bundle) {
-        Map<String, Object> params = new HashMap();
+        Map<String, Object> params = new HashMap<>();
         params.put(ParameterField.CANONICAL_NAME, canonicalName);
         if (bundle != null) {
             params.put(ParameterField.BUNDLE, bundle);
@@ -159,19 +177,36 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
     public void removeRxBus() {
     }
 
-    public class UIChangeLiveData extends SingleLiveEvent {
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        if (model != null) {
+            model.onCleared();
+        }
+        //ViewModel销毁时会执行，同时取消所有异步任务
+        if (mCompositeDisposable != null) {
+            mCompositeDisposable.clear();
+        }
+    }
+
+    @Override
+    public void accept(Disposable disposable) throws Exception {
+        addSubscribe(disposable);
+    }
+
+    public final class UIChangeLiveData extends SingleLiveEvent {
         private SingleLiveEvent<String> showDialogEvent;
-        private SingleLiveEvent dismissDialogEvent;
+        private SingleLiveEvent<Void> dismissDialogEvent;
         private SingleLiveEvent<Map<String, Object>> startActivityEvent;
         private SingleLiveEvent<Map<String, Object>> startContainerActivityEvent;
-        private SingleLiveEvent finishEvent;
-        private SingleLiveEvent onBackPressedEvent;
+        private SingleLiveEvent<Void> finishEvent;
+        private SingleLiveEvent<Void> onBackPressedEvent;
 
         public SingleLiveEvent<String> getShowDialogEvent() {
             return showDialogEvent = createLiveData(showDialogEvent);
         }
 
-        public SingleLiveEvent getDismissDialogEvent() {
+        public SingleLiveEvent<Void> getDismissDialogEvent() {
             return dismissDialogEvent = createLiveData(dismissDialogEvent);
         }
 
@@ -183,17 +218,17 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
             return startContainerActivityEvent = createLiveData(startContainerActivityEvent);
         }
 
-        public SingleLiveEvent getFinishEvent() {
+        public SingleLiveEvent<Void> getFinishEvent() {
             return finishEvent = createLiveData(finishEvent);
         }
 
-        public SingleLiveEvent getOnBackPressedEvent() {
+        public SingleLiveEvent<Void> getOnBackPressedEvent() {
             return onBackPressedEvent = createLiveData(onBackPressedEvent);
         }
 
-        private SingleLiveEvent createLiveData(SingleLiveEvent liveData) {
+        private <T> SingleLiveEvent<T> createLiveData(SingleLiveEvent<T> liveData) {
             if (liveData == null) {
-                liveData = new SingleLiveEvent();
+                liveData = new SingleLiveEvent<>();
             }
             return liveData;
         }
@@ -204,7 +239,7 @@ public class BaseViewModel extends AndroidViewModel implements IBaseViewModel {
         }
     }
 
-    public static class ParameterField {
+    public static final class ParameterField {
         public static String CLASS = "CLASS";
         public static String CANONICAL_NAME = "CANONICAL_NAME";
         public static String BUNDLE = "BUNDLE";
